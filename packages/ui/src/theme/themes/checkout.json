@@ -1,0 +1,45 @@
+{
+  "$schema": "https://opencode.ai/desktop-theme.json",
+  "name": "Checkout.com",
+  "id": "checkout",
+  "light": {
+    "palette": {
+      "neutral": "#D6E6FF",
+      "ink": "#00122C",
+      "primary": "#186AFF",
+      "accent": "#5E48FC",
+      "success": "#2ECC71",
+      "warning": "#FFB224",
+      "error": "#FF3300",
+      "info": "#186AFF",
+      "diffAdd": "#2ECC71",
+      "diffDelete": "#FF3300"
+    },
+    "overrides": {
+      "syntax-comment": "#4A6FA5",
+      "syntax-keyword": "#5E48FC",
+      "syntax-primitive": "#186AFF",
+      "syntax-constant": "#FF3300"
+    }
+  },
+  "dark": {
+    "palette": {
+      "neutral": "#00122C",
+      "ink": "#C8DEFF",
+      "primary": "#186AFF",
+      "accent": "#5E48FC",
+      "success": "#2ECC71",
+      "warning": "#FFB224",
+      "error": "#FF3300",
+      "info": "#186AFF",
+      "diffAdd": "#2ECC71",
+      "diffDelete": "#FF3300"
+    },
+    "overrides": {
+      "syntax-comment": "#4A6FA5",
+      "syntax-keyword": "#ADA4EC",
+      "syntax-primitive": "#4D9FFF",
+      "syntax-constant": "#FF3300"
+    }
+  }
+}
