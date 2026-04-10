@@ -1,5 +1,5 @@
 import { text } from "node:stream/consumers"
-import { Npm } from "@/npm"
+import path from "path"
 import { Instance } from "../project/instance"
 import { Filesystem } from "../util/filesystem"
 import { Process } from "../util/process"
@@ -74,7 +74,9 @@ export const prettier: Info = {
         devDependencies?: Record<string, string>
       }>(item)
       if (json.dependencies?.prettier || json.devDependencies?.prettier) {
-        const bin = await Npm.which("prettier")
+        const localBin = path.join(path.dirname(item), "node_modules", ".bin", "prettier")
+        if (await Filesystem.exists(localBin)) return [localBin, "--write", "$FILE"]
+        const bin = which("prettier")
         if (bin) return [bin, "--write", "$FILE"]
       }
     }
@@ -97,7 +99,9 @@ export const oxfmt: Info = {
         devDependencies?: Record<string, string>
       }>(item)
       if (json.dependencies?.oxfmt || json.devDependencies?.oxfmt) {
-        const bin = await Npm.which("oxfmt")
+        const localBin = path.join(path.dirname(item), "node_modules", ".bin", "oxfmt")
+        if (await Filesystem.exists(localBin)) return [localBin, "$FILE"]
+        const bin = which("oxfmt")
         if (bin) return [bin, "$FILE"]
       }
     }
@@ -143,7 +147,10 @@ export const biome: Info = {
     for (const config of configs) {
       const found = await Filesystem.findUp(config, Instance.directory, Instance.worktree)
       if (found.length > 0) {
-        const bin = await Npm.which("@biomejs/biome")
+        const dir = path.dirname(found[0])
+        const localBin = path.join(dir, "node_modules", ".bin", "biome")
+        if (await Filesystem.exists(localBin)) return [localBin, "format", "--write", "$FILE"]
+        const bin = which("biome")
         if (bin) return [bin, "format", "--write", "$FILE"]
       }
     }

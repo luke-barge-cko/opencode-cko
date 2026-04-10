@@ -20,12 +20,12 @@ ENV OPENCODE_DISABLE_MODELS_FETCH=1 \
     OPENCODE_DISABLE_SHARE=1
 
 FROM base AS build-amd64
-COPY dist/opencode-linux-x64-baseline-musl-headless/bin/opencode /usr/local/bin/opencode
+COPY dist/opencode-linux-x64-baseline-musl-no-tui/bin/opencode /usr/local/bin/opencode
 
 FROM base AS build-arm64
-COPY dist/opencode-linux-arm64-musl-headless/bin/opencode /usr/local/bin/opencode
+COPY dist/opencode-linux-arm64-musl-no-tui/bin/opencode /usr/local/bin/opencode
 
 ARG TARGETARCH
 FROM build-${TARGETARCH}
 RUN opencode --version
-ENTRYPOINT ["opencode"]
+ENTRYPOINT ["opencode serve"]

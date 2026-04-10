@@ -40,7 +40,7 @@ import { makeRuntime } from "@/effect/run-service"
 import { Duration, Effect, Layer, Option, ServiceMap } from "effect"
 import { Flock } from "@/util/flock"
 import { isPathPluginSpec, parsePluginSpecifier, resolvePathPluginTarget } from "@/plugin/shared"
-import { Npm } from "@/npm"
+
 
 export namespace Config {
   const ModelId = z.string().meta({ $ref: "https://models.dev/model-schema.json#/$defs/Model" })
@@ -177,7 +177,6 @@ export namespace Config {
         ["node_modules", "package.json", "package-lock.json", "bun.lock", ".gitignore"].join("\n"),
       )
     }
-    await Npm.install(dir)
   }
 
   async function isWritable(dir: string) {

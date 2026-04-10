@@ -15,6 +15,7 @@ import { Module } from "@opencode-ai/util/module"
 import { spawn } from "./launch"
 import { Npm } from "@/npm"
 
+
 export namespace LSPServer {
   const log = Log.create({ service: "lsp.server" })
   const pathExists = async (p: string) =>
@@ -103,7 +104,7 @@ export namespace LSPServer {
       const tsserver = Module.resolve("typescript/lib/tsserver.js", Instance.directory)
       log.info("typescript server", { tsserver })
       if (!tsserver) return
-      const bin = await Npm.which("typescript-language-server")
+      const bin = which("typescript-language-server")
       if (!bin) return
       const proc = spawn(bin, ["--stdio"], {
         cwd: root,
@@ -320,15 +321,9 @@ export namespace LSPServer {
         if (found) bin = found
       }
 
-      let args = ["lsp-proxy", "--stdio"]
+      const args = ["lsp-proxy", "--stdio"]
 
-      if (!bin) {
-        const resolved = Module.resolve("biome", root)
-        if (!resolved) return
-        bin = await Npm.which("biome")
-        if (!bin) return
-        args = ["lsp-proxy", "--stdio"]
-      }
+      if (!bin) return
 
       const proc = spawn(bin, args, {
         cwd: root,
