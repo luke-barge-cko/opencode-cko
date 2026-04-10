@@ -31,6 +31,10 @@ import { EventRoutes } from "./routes/event"
 import { errorHandler } from "./middleware"
 import { getMimeType } from "hono/utils/mime"
 
+declare global {
+  const OPENCODE_NO_WEB_UI: boolean
+}
+
 const log = Log.create({ service: "server" })
 
 const embeddedUIPromise = Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI
@@ -298,6 +302,8 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket, app: Hono = new Hono()
         } else {
           return c.json({ error: "Not Found" }, 404)
         }
+      } else if (typeof OPENCODE_NO_WEB_UI !== "undefined" && OPENCODE_NO_WEB_UI) {
+        return c.json({ error: "Not Found" }, 404)
       } else {
         const response = await proxy(`https://app.opencode.ai${path}`, {
           ...c.req,

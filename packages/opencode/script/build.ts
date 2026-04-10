@@ -227,6 +227,7 @@ for (const item of targets) {
       OPENCODE_MIGRATIONS: JSON.stringify(migrations),
       OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
       OPENCODE_WORKER_PATH: noTui ? "" : "./src/cli/cmd/tui/worker.ts",
+      OPENCODE_NO_WEB_UI: noWebUi ? "true" : "false",
       OPENCODE_CHANNEL: `'${Script.channel}'`,
       OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
     },
