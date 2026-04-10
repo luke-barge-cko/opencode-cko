@@ -1,4 +1,3 @@
-import semver from "semver"
 import z from "zod"
 import { NamedError } from "@opencode-ai/util/error"
 import { Global } from "../global"
@@ -41,27 +40,7 @@ export namespace Npm {
     return result
   }
 
-  export async function outdated(pkg: string, cachedVersion: string): Promise<boolean> {
-    const response = await fetch(`https://registry.npmjs.org/${pkg}`)
-    if (!response.ok) {
-      log.warn("Failed to resolve latest version, using cached", { pkg, cachedVersion })
-      return false
-    }
-
-    const data = (await response.json()) as { "dist-tags"?: { latest?: string } }
-    const latestVersion = data?.["dist-tags"]?.latest
-    if (!latestVersion) {
-      log.warn("No latest version found, using cached", { pkg, cachedVersion })
-      return false
-    }
-
-    const range = /[\s^~*xX<>|=]/.test(cachedVersion)
-    if (range) return !semver.satisfies(latestVersion, cachedVersion)
-
-    return semver.lt(cachedVersion, latestVersion)
-  }
-
-  export async function add(pkg: string) {
+  async function add(pkg: string) {
     const dir = directory(pkg)
     await using _ = await Flock.acquire(`npm-install:${Filesystem.resolve(dir)}`)
     log.info("installing package", {
@@ -101,56 +80,6 @@ export namespace Npm {
     const first = result.edgesOut.values().next().value?.to
     if (!first) throw new InstallFailedError({ pkg })
     return resolveEntryPoint(first.name, first.path)
-  }
-
-  export async function install(dir: string) {
-    await using _ = await Flock.acquire(`npm-install:${dir}`)
-    log.info("checking dependencies", { dir })
-
-    const reify = async () => {
-      const arb = new Arborist({
-        path: dir,
-        binLinks: true,
-        progress: false,
-        savePrefix: "",
-        ignoreScripts: true,
-      })
-      await arb.reify().catch(() => {})
-    }
-
-    if (!(await Filesystem.exists(path.join(dir, "node_modules")))) {
-      log.info("node_modules missing, reifying")
-      await reify()
-      return
-    }
-
-    const pkg = await Filesystem.readJson(path.join(dir, "package.json")).catch(() => ({}))
-    const lock = await Filesystem.readJson(path.join(dir, "package-lock.json")).catch(() => ({}))
-
-    const declared = new Set([
-      ...Object.keys(pkg.dependencies || {}),
-      ...Object.keys(pkg.devDependencies || {}),
-      ...Object.keys(pkg.peerDependencies || {}),
-      ...Object.keys(pkg.optionalDependencies || {}),
-    ])
-
-    const root = lock.packages?.[""] || {}
-    const locked = new Set([
-      ...Object.keys(root.dependencies || {}),
-      ...Object.keys(root.devDependencies || {}),
-      ...Object.keys(root.peerDependencies || {}),
-      ...Object.keys(root.optionalDependencies || {}),
-    ])
-
-    for (const name of declared) {
-      if (!locked.has(name)) {
-        log.info("dependency not in lock file, reifying", { name })
-        await reify()
-        return
-      }
-    }
-
-    log.info("dependencies in sync")
   }
 
   export async function which(pkg: string) {

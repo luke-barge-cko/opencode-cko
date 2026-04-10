@@ -5,7 +5,7 @@ import { Config } from "../config/config"
 import { mapValues, mergeDeep, omit, pickBy, sortBy } from "remeda"
 import { NoSuchModelError, type Provider as SDK } from "ai"
 import { Log } from "../util/log"
-import { Npm } from "../npm"
+
 import { Hash } from "../util/hash"
 import { Plugin } from "../plugin"
 import { NamedError } from "@opencode-ai/util/error"
@@ -1467,15 +1467,13 @@ export namespace Provider {
             return loaded as SDK
           }
 
-          let installedPath: string
           if (!model.api.npm.startsWith("file://")) {
-            const item = await Npm.add(model.api.npm)
-            if (!item.entrypoint) throw new Error(`Package ${model.api.npm} has no import entrypoint`)
-            installedPath = item.entrypoint
-          } else {
-            log.info("loading local provider", { pkg: model.api.npm })
-            installedPath = model.api.npm
+            throw new Error(
+              `Runtime npm provider installation is not supported: "${model.api.npm}". Use a bundled or file:// provider.`,
+            )
           }
+          log.info("loading local provider", { pkg: model.api.npm })
+          const installedPath = model.api.npm
 
           const mod = await import(installedPath)
 

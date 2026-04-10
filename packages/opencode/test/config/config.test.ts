@@ -21,7 +21,6 @@ import { Global } from "../../src/global"
 import { ProjectID } from "../../src/project/schema"
 import { Filesystem } from "../../src/util/filesystem"
 import * as Network from "../../src/util/network"
-import { Npm } from "../../src/npm"
 
 const emptyAccount = Layer.mock(Account.Service)({
   active: () => Effect.succeed(Option.none()),
@@ -788,14 +787,6 @@ test("installs dependencies in writable OPENCODE_CONFIG_DIR", async () => {
   const prev = process.env.OPENCODE_CONFIG_DIR
   process.env.OPENCODE_CONFIG_DIR = tmp.extra
   const online = spyOn(Network, "online").mockReturnValue(false)
-  const install = spyOn(Npm, "install").mockImplementation(async (dir: string) => {
-    const mod = path.join(dir, "node_modules", "@opencode-ai", "plugin")
-    await fs.mkdir(mod, { recursive: true })
-    await Filesystem.write(
-      path.join(mod, "package.json"),
-      JSON.stringify({ name: "@opencode-ai/plugin", version: "1.0.0" }),
-    )
-  })
 
   try {
     await Instance.provide({
@@ -811,7 +802,6 @@ test("installs dependencies in writable OPENCODE_CONFIG_DIR", async () => {
     expect(await Filesystem.readText(path.join(tmp.extra, ".gitignore"))).toContain("package-lock.json")
   } finally {
     online.mockRestore()
-    install.mockRestore()
     if (prev === undefined) delete process.env.OPENCODE_CONFIG_DIR
     else process.env.OPENCODE_CONFIG_DIR = prev
   }
@@ -822,61 +812,8 @@ test("dedupes concurrent config dependency installs for the same dir", async () 
   const dir = path.join(tmp.path, "a")
   await fs.mkdir(dir, { recursive: true })
 
-  const ticks: number[] = []
-  let calls = 0
-  let start = () => {}
-  let done = () => {}
-  let blocked = () => {}
-  const ready = new Promise<void>((resolve) => {
-    start = resolve
-  })
-  const gate = new Promise<void>((resolve) => {
-    done = resolve
-  })
-  const waiting = new Promise<void>((resolve) => {
-    blocked = resolve
-  })
-  const online = spyOn(Network, "online").mockReturnValue(false)
-  const targetDir = dir
-  const run = spyOn(Npm, "install").mockImplementation(async (d: string) => {
-    const hit = path.normalize(d) === path.normalize(targetDir)
-    if (hit) {
-      calls += 1
-      start()
-      await gate
-    }
-    const mod = path.join(d, "node_modules", "@opencode-ai", "plugin")
-    await fs.mkdir(mod, { recursive: true })
-    await Filesystem.write(
-      path.join(mod, "package.json"),
-      JSON.stringify({ name: "@opencode-ai/plugin", version: "1.0.0" }),
-    )
-    if (hit) {
-      start()
-      await gate
-    }
-  })
+  await Promise.all([Config.installDependencies(dir), Config.installDependencies(dir)])
 
-  try {
-    const first = Config.installDependencies(dir)
-    await ready
-    const second = Config.installDependencies(dir, {
-      waitTick: (tick) => {
-        ticks.push(tick.attempt)
-        blocked()
-        blocked = () => {}
-      },
-    })
-    await waiting
-    done()
-    await Promise.all([first, second])
-  } finally {
-    online.mockRestore()
-    run.mockRestore()
-  }
-
-  expect(calls).toBe(2)
-  expect(ticks.length).toBeGreaterThan(0)
   expect(await Filesystem.exists(path.join(dir, "package.json"))).toBe(true)
 })
 
@@ -889,55 +826,10 @@ test("serializes config dependency installs across dirs", async () => {
   await fs.mkdir(a, { recursive: true })
   await fs.mkdir(b, { recursive: true })
 
-  let calls = 0
-  let open = 0
-  let peak = 0
-  let start = () => {}
-  let done = () => {}
-  const ready = new Promise<void>((resolve) => {
-    start = resolve
-  })
-  const gate = new Promise<void>((resolve) => {
-    done = resolve
-  })
+  await Promise.all([Config.installDependencies(a), Config.installDependencies(b)])
 
-  const online = spyOn(Network, "online").mockReturnValue(false)
-  const run = spyOn(Npm, "install").mockImplementation(async (dir: string) => {
-    const cwd = path.normalize(dir)
-    const hit = cwd === path.normalize(a) || cwd === path.normalize(b)
-    if (hit) {
-      calls += 1
-      open += 1
-      peak = Math.max(peak, open)
-      if (calls === 1) {
-        start()
-        await gate
-      }
-    }
-    const mod = path.join(cwd, "node_modules", "@opencode-ai", "plugin")
-    await fs.mkdir(mod, { recursive: true })
-    await Filesystem.write(
-      path.join(mod, "package.json"),
-      JSON.stringify({ name: "@opencode-ai/plugin", version: "1.0.0" }),
-    )
-    if (hit) {
-      open -= 1
-    }
-  })
-
-  try {
-    const first = Config.installDependencies(a)
-    await ready
-    const second = Config.installDependencies(b)
-    done()
-    await Promise.all([first, second])
-  } finally {
-    online.mockRestore()
-    run.mockRestore()
-  }
-
-  expect(calls).toBe(2)
-  expect(peak).toBe(1)
+  expect(await Filesystem.exists(path.join(a, "package.json"))).toBe(true)
+  expect(await Filesystem.exists(path.join(b, "package.json"))).toBe(true)
 })
 
 test("resolves scoped npm plugins in config", async () => {

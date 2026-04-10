@@ -2,7 +2,6 @@ import path from "path"
 import { fileURLToPath, pathToFileURL } from "url"
 import npa from "npm-package-arg"
 import semver from "semver"
-import { Npm } from "@/npm"
 import { Filesystem } from "@/util/filesystem"
 import { isRecord } from "@/util/record"
 
@@ -206,10 +205,7 @@ export async function checkPluginCompatibility(target: string, opencodeVersion: 
 
 export async function resolvePluginTarget(spec: string) {
   if (isPathPluginSpec(spec)) return resolvePathPluginTarget(spec)
-  const hit = parse(spec)
-  const pkg = hit?.name && hit.raw === hit.name ? `${hit.name}@latest` : spec
-  const result = await Npm.add(pkg)
-  return result.directory
+  throw new Error(`npm plugins are not supported: "${spec}". Use a file:// path instead.`)
 }
 
 export async function readPluginPackage(target: string): Promise<PluginPackage> {
