@@ -51,8 +51,10 @@ const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
 const skipInstall = process.argv.includes("--skip-install")
 const noUi = process.argv.includes("--no-ui")
+const noTui = noUi || process.argv.includes("--no-tui")
+const noWebUi = noUi || process.argv.includes("--no-web-ui")
 const plugin = createSolidTransformPlugin()
-const skipEmbedWebUi = noUi || process.argv.includes("--skip-embed-web-ui")
+const skipEmbedWebUi = noWebUi || process.argv.includes("--skip-embed-web-ui")
 
 const createEmbeddedWebUIBundle = async () => {
   console.log(`Building Web UI to embed in the binary`)
@@ -167,7 +169,7 @@ await $`rm -rf dist`
 
 const binaries: Record<string, string> = {}
 if (!skipInstall) {
-  if (!noUi) {
+  if (!noTui) {
     await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
   }
   await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
@@ -180,19 +182,19 @@ for (const item of targets) {
     item.arch,
     item.avx2 === false ? "baseline" : undefined,
     item.abi === undefined ? undefined : item.abi,
-    noUi ? "headless" : undefined,
+    noTui && noWebUi ? "headless" : noTui ? "no-tui" : noWebUi ? "no-web" : undefined,
   ]
     .filter(Boolean)
     .join("-")
   console.log(`building ${name}`)
   await $`mkdir -p dist/${name}/bin`
 
-  const entrypoint = noUi ? "./src/index-headless.ts" : "./src/index.ts"
+  const entrypoint = noTui ? "./src/index-no-tui.ts" : "./src/index.ts"
   const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
 
   const tuiEntrypoints: string[] = []
   let workerRelativePath = ""
-  if (!noUi) {
+  if (!noTui) {
     const localPath = path.resolve(dir, "node_modules/@opentui/core/parser.worker.js")
     const rootPath = path.resolve(dir, "../../node_modules/@opentui/core/parser.worker.js")
     const parserWorker = fs.realpathSync(fs.existsSync(localPath) ? localPath : rootPath)
@@ -211,7 +213,7 @@ for (const item of targets) {
       autoloadDotenv: false,
       autoloadTsconfig: true,
       autoloadPackageJson: true,
-      target: name.replace(pkg.name, "bun").replace("-headless", "") as any,
+      target: name.replace(pkg.name, "bun").replace(/-(?:headless|no-tui|no-web)$/, "") as any,
       outfile: `dist/${name}/bin/opencode`,
       execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
@@ -224,7 +226,7 @@ for (const item of targets) {
       OPENCODE_VERSION: `'${Script.version}'`,
       OPENCODE_MIGRATIONS: JSON.stringify(migrations),
       OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
-      OPENCODE_WORKER_PATH: noUi ? "" : "./src/cli/cmd/tui/worker.ts",
+      OPENCODE_WORKER_PATH: noTui ? "" : "./src/cli/cmd/tui/worker.ts",
       OPENCODE_CHANNEL: `'${Script.channel}'`,
       OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
     },
